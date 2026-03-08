@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Weather App</title>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon-iphone60x60.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="images/apple-touchicon-ipad-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="images/apple-touchicon-iphone-retina-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="images/apple-touchicon-ipad-retina-152x152.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"> 
+</head>
+<body class="bg-secondary">
+    <div class="d-flex justify-content-center min-vh-100 align-items-center">
+        <div class = "card col-lg-8 col-md-8 col-sm-8">
+            <div class="card-header fw-bold text-center">
+                <h1 id="txtLocation"><i class="bi bi-geo text-danger fs-1"></i></h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="card col-6 justify-content-center align-items-center">
+                        <h2 id="txtCurrentCondition"><i id="objCurrentConditionIcon" class="bi"></i></h2>
+                    </div>
+                    <div class="card col-6 justify-content-center align-items-center">
+                        <h2 id="txtCurrentTemp"><i id="objCurrentTempIcon" class="bi"></i></h2>
+                        <h2 id="txtHumidity"><i class="bi bi-moisture text-primary"></i></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+
+        //weather code information, info on the weather codes obtained from https://github.com/open-meteo/open-meteo/issues/789
+        const strWeatherCodeInfo = {
+            0: {des: "Clear", icon: "bi-sun-fill"},
+            1: {des: "Mostly Clear", icon: "bi-cloud-sun-fill"},
+            2: {des: "Partly Cloudy", icon: "bi-cloud-sun-fill"},
+            3: {des: "Overcast", icon: "bi-clouds-fill"},
+            45: {des: "Fog", icon: "bi-cloud-fog-fill" },
+            48: {des: "Icy Fog", icon: "bi-cloud-fog2-fill" },
+            51: {des: "Light Drizzle", icon: "bi-cloud-drizzle-fill" },
+            61: {des: "Slight Rain", icon: "bi-cloud-rain-fill" },
+            63: {des: "Moderate Rain", icon: "bi-cloud-rain-fill" },
+            65: {des: "Heavy Rain", icon: "bi-cloud-rain-heavy-fill" },
+            71: {des: "Slight Snow", icon: "bi-cloud-snow-fill" },
+            73: {des: "Moderate Snow", icon: "bi-cloud-snow-fill" },
+            75: {des: "Heavy Snow", icon: "bi-snow" },
+            77: {des: "Snow Grains", icon: "bi-snow2" },
+            80: {des: "Rain Showers", icon: "bi-cloud-rain" },
+            95: {des: "Thunderstorm", icon: "bi-cloud-lightning-rain" },
+            96: {des: "Thunderstorm/Hail", icon: "bi-cloud-hail" },
+            99: {des: "Thunderstorm/Heavy Hail", icon: "bi-cloud-hail" }
+        }
+
+        //icon info for the temperature icons
+        const strTemperatureIcons = {
+            0: {icon: "bi-thermometer-snow text-info"}, //below 40
+            1: {icon: "bi-thermometer-low text-primary"}, //40-59
+            2: {icon: "bi-thermometer-half text-success"}, //60-75
+            3: {icon: "bi-thermometer-sun text-danger"} //76+
+        }
+
+        //decides which icon to use based on the tempurature, returns index for the info above^^^^^
+        function decideTempIcon(fltTemp){
+            if(fltTemp > 75.0){
+                return 3
+            } else if(fltTemp > 59.0){
+                return 2
+            } else if(fltTemp > 39.0){
+                return 1
+            } else {
+                return 0
+            }
+        }
+        
+        getLocation()
+
+        //code for geolocation uses the js web geolocation api
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError)
+            } else {
+                console.log("Geolocation is not supported by this browser.")
+            }
+        }
+
+        //takes the lat and long from the geo api and sends it open meteo api
+        function showPosition(currPosition) {
+            const intLat = currPosition.coords.latitude
+            const intLong = currPosition.coords.longitude
+            getWeatherData(intLat, intLong)
+        }
+
+        //gets name of city based on lat and long
+        async function getLocationName(intLat, intLong) {
+            const strOpenStreetMapsURL = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${intLat}&lon=${intLong}`
+            try {
+                const objFetchResponse = await fetch(strOpenStreetMapsURL)
+                const objFetchResponseData = await objFetchResponse.json()
+                return objFetchResponseData.address.city
+            } catch (error) {
+                console.error("Location Error:", error)
+            }
+        }
+
+        //error handling for the geolocation api
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                strGetCurrentLocation.innerHTML = "User denied the request for Geolocation."
+                break;
+                case error.POSITION_UNAVAILABLE:
+                strGetCurrentLocation.innerHTML = "Location information is unavailable."
+                break;
+                case error.TIMEOUT:
+                strGetCurrentLocation.innerHTML = "The request to get user location timed out."
+                break;
+                case error.UNKNOWN_ERROR:
+                strGetCurrentLocation.innerHTML = "An unknown error occurred."
+                break;
+            }
+        }
+
+        //pulls weather data from open meteo
+        async function getWeatherData(intLat, intLong){
+            try {
+                //display city
+                strCity = await getLocationName(intLat, intLong);
+                txtCity = document.getElementById('txtLocation')
+                txtCity.append(`${strCity}`) //i used append because i wanted the icons on the same line as the info
+
+                const objFetch = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${intLat}&longitude=${intLong}&current=temperature_2m,precipitation,weather_code,relative_humidity_2m&timezone=auto&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-type' : 'applications-json'
+                    }
+                })
+                const objFetchData = await objFetch.json();
+                
+                //condition + icon
+                const objCurrentConditionIcon = document.getElementById('objCurrentConditionIcon')
+                objCurrentConditionIcon.className = `bi ${strWeatherCodeInfo[objFetchData.current.weather_code].icon}`
+                txtCurrentCondition = document.getElementById('txtCurrentCondition')
+                txtCurrentCondition.append(`${strWeatherCodeInfo[objFetchData.current.weather_code].des}`)
+
+                //temp + icon
+                fltTemp = objFetchData.current.temperature_2m
+                intTempIcon = decideTempIcon(fltTemp)
+                const objCurrentTempIcon = document.getElementById('objCurrentTempIcon')
+                objCurrentTempIcon.className = ` bi ${strTemperatureIcons[intTempIcon].icon} fs-1`
+                txtCurrentTemp = document.getElementById('txtCurrentTemp')
+                txtCurrentTemp.append(`${objFetchData.current.temperature_2m}°F`)
+
+                //humidity
+                txtHumidity = document.getElementById('txtHumidity') 
+                txtHumidity.append(` ${objFetchData.current.relative_humidity_2m}%`)
+
+            } catch(err) {
+                console.log("Failed to fetch weather data", err)
+            }
+
+        }
+
+</script>
+<footer>
+    <p>Weather data provided via Open Meteo API</p>
+    <p>https://open-meteo.com/en/docs</p>
+</footer>    
+</body>
+
+</html>
+
+
+
