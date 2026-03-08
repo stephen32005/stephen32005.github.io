@@ -114,16 +114,16 @@
         function showError(error) {
             switch(error.code) {
                 case error.PERMISSION_DENIED:
-                strGetCurrentLocation.innerHTML = "User denied the request for Geolocation."
+                console.log("User denied the request for Geolocation.")
                 break;
                 case error.POSITION_UNAVAILABLE:
-                strGetCurrentLocation.innerHTML = "Location information is unavailable."
+                console.log("Location information is unavailable.")
                 break;
                 case error.TIMEOUT:
-                strGetCurrentLocation.innerHTML = "The request to get user location timed out."
+                console.log("The request to get user location timed out.")
                 break;
                 case error.UNKNOWN_ERROR:
-                strGetCurrentLocation.innerHTML = "An unknown error occurred."
+                console.log("An unknown error occurred.")
                 break;
             }
         }
@@ -139,7 +139,7 @@
                 const objFetch = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${intLat}&longitude=${intLong}&current=temperature_2m,precipitation,weather_code,relative_humidity_2m&timezone=auto&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch`, {
                     method: 'GET',
                     headers: {
-                        'Content-type' : 'applications-json'
+                        'Content-type' : 'applications/json'
                     }
                 })
                 const objFetchData = await objFetch.json();
